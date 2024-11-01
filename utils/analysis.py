@@ -160,7 +160,7 @@ def get_top_terms(tfidf_results, n_terms=5):
         raise ValueError("tfidf_results must be DataFrame, Series or dict")
     return tfidf_scores_sorted.head(n_terms).index.tolist()
     
-def plot_word_timeseries(df, terms, figsize=(12, 6), include_selftext=False):
+def plot_word_timeseries(title, df, terms, figsize=(12, 6), include_selftext=False):
     """
     Plot time series for given terms.
     
@@ -204,7 +204,7 @@ def plot_word_timeseries(df, terms, figsize=(12, 6), include_selftext=False):
     for term in terms:
         ax.plot(dates, daily_counts[term], marker='o', label=term)
     
-    ax.set_title('Term Frequency Over Time')
+    ax.set_title(f'Term Frequency Over Time for subreddit "{title}"')
     ax.set_xlabel('Date')
     ax.set_ylabel('Frequency')
     ax.legend()
@@ -228,10 +228,18 @@ def plot_word_similarities(tfidf_matrix, feature_names, n_terms=10, similarity_t
     """
     # Get top n terms based on mean TF-IDF scores
     mean_tfidf = tfidf_matrix.mean(axis=0).A1
+        # Compute mean along the rows (ie by columns)
+        # .A1 converts the resuting matrix to a flat (1D) array
     top_indices = mean_tfidf.argsort()[-n_terms:][::-1]
+        # argsort() returns the indices that would sort the array in ascending order
+        # [-n_terms:] gets the last n_terms indices (ie the largest value since the sorted list is ascending)
+        # [::-1] reverses the order to get the highest values first
     
     # Get vectors for top terms
     term_vectors = tfidf_matrix.T[top_indices].toarray()
+        # .T transposes the matrix so that the rows correspond to terms
+        # [top_indices] selects only the rows corresponding to the top terms
+        # .toarray() converts the sparse matrix to a dense array
     top_terms = feature_names[top_indices]
     
     # Calculate similarities and distances
@@ -240,34 +248,43 @@ def plot_word_similarities(tfidf_matrix, feature_names, n_terms=10, similarity_t
     
     # Use MDS for 2D projection
     mds = MDS(n_components=2, dissimilarity='precomputed', random_state=42)
+        # n_components=2 specifies that we want a 2D projection
+        # dissimilarity='precomputed' indicates that we are providing a precomputed distance matrix
     coords = mds.fit_transform(distances)
+        # fit_transform() — a method under MDS clas — computes the 2D coordinates based on the distance matrix
     
     # Plot
     fig, ax = plt.subplots(figsize=(10, 10))
     ax.scatter(coords[:, 0], coords[:, 1])
+        # scatter() plots the points in the 2D space
+        # coords[:, 0] and coords[:, 1] are the x and y coordinates of the points
     
     # Add word labels
-    for i, term in enumerate(top_terms):
-        ax.annotate(
-            term, 
-            (coords[i, 0], coords[i, 1]), 
+    for i, term in enumerate(top_terms): # i is the counter index, term is the word
+        ax.annotate( # add an annotation (text label) to the plot
+            term, # the text to display
+            (coords[i, 0], coords[i, 1]), # the coordinates of the text
             fontsize=12,
             bbox=dict(facecolor='white', edgecolor='gray', alpha=0.7),
             ha='center', va='center')
     
     # Draw lines between similar terms
     for i in range(len(top_terms)):
-        for j in range(i+1, len(top_terms)):
-            if similarities[i,j] > similarity_threshold:
+        for j in range(i+1, len(top_terms)): # i+1 to avoid self-comparisons
+            if similarities[i,j] > similarity_threshold: 
                 ax.plot([coords[i,0], coords[j,0]], 
                        [coords[i,1], coords[j,1]], 
                        'gray', alpha=0.3)
+                # plot() draws a line between the two points if the similarity is above the threshold
     if title: 
         ax.set_title(f'Word Similarities in {title}')
     else:
         ax.set_title('Word Similarities')
     plt.tight_layout()
     return fig, ax
+
+
+
 
 def plot_word_similarities_tsne(tfidf_matrix, feature_names, n_highlight=5, perplexity=30, title=None):
     """
@@ -286,6 +303,7 @@ def plot_word_similarities_tsne(tfidf_matrix, feature_names, n_highlight=5, perp
                 perplexity=min(30, len(feature_names)/4), 
                 random_state=42)
     coords = tsne.fit_transform(term_vectors)
+        # fit_transform() computes the 2D coordinates based on the term vectors
     
     # Plot
     fig, ax = plt.subplots(figsize=(10, 10))
@@ -294,8 +312,8 @@ def plot_word_similarities_tsne(tfidf_matrix, feature_names, n_highlight=5, perp
     ax.scatter(coords[:, 0], coords[:, 1], 
               c='lightgray', alpha=0.5, s=30)
     
-    # Highlight top terms
-    ax.scatter(coords[top_indices, 0], coords[top_indices, 1], 
+    # Highlight top terms in red
+    ax.scatter(coords[top_indices, 0], coords[top_indices, 1], # the x and y coordinates of each of the top terms respectively
               c='red', s=100)
     
     # Add labels for top terms

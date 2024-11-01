@@ -5,16 +5,16 @@ import json
 import os
 from datetime import datetime, timedelta
 
-def cache_results(func):
-    def wrapper(self, subreddit, limit=100, cache=False, cache_duration_hours=24):
+def cache_results(func): # Decorator function to cache results
+    def wrapper(self, subreddit, limit=100, cache=False, cache_duration_hours=24): # Wrapper function to cache results
         cache_dir = '.cache'
         cache_file = os.path.join(cache_dir, f'{subreddit}_{limit}.json')
         
         if cache:
-            os.makedirs(cache_dir, exist_ok=True)
-            if os.path.exists(cache_file):
-                modified_time = datetime.fromtimestamp(os.path.getmtime(cache_file))
-                if datetime.now() - modified_time < timedelta(hours=cache_duration_hours):
+            os.makedirs(cache_dir, exist_ok=True) # Create cache directory if it doesn't exist
+            if os.path.exists(cache_file): # Check if cache file exists
+                modified_time = datetime.fromtimestamp(os.path.getmtime(cache_file)) # Get the last modified time of the cache file
+                if datetime.now() - modified_time < timedelta(hours=cache_duration_hours): # Check if the cache file is still valid
                     with open(cache_file, 'r') as f:
                         return json.load(f)
         
@@ -22,17 +22,19 @@ def cache_results(func):
         
         if cache:
             with open(cache_file, 'w') as f:
-                json.dump(results, f)
+                json.dump(results, f) # Save the results to the cache file
         
-        return results
-    return wrapper
+        return results # Return the results
+    return wrapper # Return the wrapper function
+
+
 
 class RedditScraper:
     def __init__(self, user_agent):
         self.headers = {'User-Agent': user_agent}
         self.base_url = "https://api.reddit.com"
     
-    @cache_results
+    @cache_results # Decorator applied to the function below
     def get_subreddit_posts(self, subreddit, limit=100, cache=False, cache_duration_hours=24):
         posts = []
         after = None
